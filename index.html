@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KStock Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080c10;
+  --surface:  #0d1117;
+  --panel:    #111820;
+  --border:   #1e2d3d;
+  --accent:   #00e5ff;
+  --green:    #00ff88;
+  --yellow:   #ffd600;
+  --red:      #ff3d5a;
+  --muted:    #3a4a5a;
+  --text:     #c8d8e8;
+  --text-dim: #5a7080;
+  --mono:     'Space Mono', monospace;
+  --sans:     'Noto Sans KR', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── 배경 그리드 효과 ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── 상단 헤더 ── */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(8,12,16,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 58px;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  color: var(--accent);
+  letter-spacing: .08em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo span { color: var(--text-dim); font-size: .75rem; }
+
+.header-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: .75rem;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; } 50% { opacity:.4; }
+}
+
+.btn-refresh {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: .72rem;
+  padding: 5px 14px;
+  cursor: pointer;
+  border-radius: 3px;
+  letter-spacing: .05em;
+  transition: all .2s;
+}
+.btn-refresh:hover { background: rgba(0,229,255,.08); border-color: var(--accent); }
+
+/* ── 메인 레이아웃 ── */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+/* ── KPI 카드 행 ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: .6;
+}
+.kpi-label {
+  font-size: .68rem;
+  color: var(--text-dim);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-family: var(--mono);
+}
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 1.6rem;
+  color: var(--accent);
+  line-height: 1;
+}
+.kpi-sub {
+  font-size: .7rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+/* ── 2열 그리드 ── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── 패널 ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+}
+
+.panel-title {
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: var(--accent);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title .icon { font-size: 1rem; }
+
+.panel-meta {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--text-dim);
+}
+
+/* ── 필터 바 ── */
+.filter-bar {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(0,0,0,.2);
+}
+
+.filter-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: .66rem;
+  padding: 4px 12px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: .06em;
+  transition: all .15s;
+}
+.filter-btn.active, .filter-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,229,255,.06);
+}
+
+/* ── 종목 테이블 ── */
+.stock-list { padding: 0; }
+
+.stock-item {
+  display: grid;
+  grid-template-columns: 28px 1fr 90px 60px 60px 60px 50px;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(30,45,61,.6);
+  cursor: pointer;
+  transition: background .15s;
+  font-size: .82rem;
+}
+.stock-item:hover { background: rgba(0,229,255,.04); }
+.stock-item:last-child { border-bottom: none; }
+
+.stock-rank {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+.rank-1 { color: var(--yellow); }
+.rank-2 { color: #b0b0b0; }
+.rank-3 { color: #cd7f32; }
+
+.stock-name-wrap {}
+.stock-name {
+  font-weight: 500;
+  color: var(--text);
+  font-size: .84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stock-code {
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--text-dim);
+}
+.stock-sector {
+  font-size: .6rem;
+  color: var(--text-dim);
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.score-bar-wrap { position: relative; }
+.score-val {
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: var(--text);
+  text-align: right;
+}
+.score-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.score-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .6s ease;
+}
+
+.indicator {
+  font-family: var(--mono);
+  font-size: .74rem;
+  text-align: right;
+}
+.ind-green  { color: var(--green); }
+.ind-yellow { color: var(--yellow); }
+.ind-red    { color: var(--red); }
+.ind-muted  { color: var(--text-dim); }
+
+.grade-badge {
+  font-size: .65rem;
+  font-family: var(--mono);
+  padding: 3px 7px;
+  border-radius: 2px;
+  text-align: center;
+  font-weight: 700;
+}
+.grade-A { background: rgba(0,255,136,.12); color: var(--green); border: 1px solid rgba(0,255,136,.3); }
+.grade-B { background: rgba(255,214,0,.1);  color: var(--yellow); border: 1px solid rgba(255,214,0,.3); }
+.grade-C { background: rgba(255,61,90,.1);  color: var(--red);    border: 1px solid rgba(255,61,90,.3); }
+
+/* ── 섹터 요약 패널 ── */
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.sector-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.sector-card:hover { border-color: var(--accent); background: rgba(0,229,255,.04); }
+.sector-card.active { border-color: var(--accent); }
+.sector-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform .2s;
+}
+.sector-card.active::after,
+.sector-card:hover::after { transform: scaleX(1); }
+
+.sector-name {
+  font-size: .72rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.sector-stats {
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sector-score {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-top: 6px;
+}
+
+/* ── 로딩 스피너 ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 12px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: .75rem;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 빈 상태 ── */
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: .8rem;
+  font-family: var(--mono);
+}
+
+/* ── 탭 ── */
+.tab-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: .72rem;
+  padding: 12px;
+  cursor: pointer;
+  letter-spacing: .08em;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+  text-transform: uppercase;
+}
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: rgba(0,229,255,.04);
+}
+
+/* ── AI 의견 ── */
+.ai-opinion {
+  font-size: .7rem;
+  color: var(--text-dim);
+  padding: 6px 16px 10px;
+  font-style: italic;
+  border-top: 1px solid rgba(30,45,61,.4);
+}
+
+/* ── 업데이트 타임 ── */
+#last-update {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: var(--text-dim);
+}
+
+/* ── 툴팁 ── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a2535;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: .65rem;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 99;
+  font-family: var(--mono);
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    ◈ KSTOCK<span>FINDER v12</span>
+  </div>
+  <div class="header-status">
+    <div class="status-dot"></div>
+    <span id="last-update">로딩 중...</span>
+    <button class="btn-refresh" onclick="loadAll()">↻ 새로고침</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- KPI 카드 -->
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">바스켓 종목</div>
+      <div class="kpi-value" id="kpi-basket">—</div>
+      <div class="kpi-sub">전체 모니터링</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">5일선 ↑</div>
+      <div class="kpi-value" id="kpi-ma5">—</div>
+      <div class="kpi-sub">상승 모멘텀</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">조건검색 통과</div>
+      <div class="kpi-value" id="kpi-cond">—</div>
+      <div class="kpi-sub">당일 필터 통과</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">TOP 섹터</div>
+      <div class="kpi-value" style="font-size:1rem" id="kpi-sector">—</div>
+      <div class="kpi-sub">평균점수 최고</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">갱신 시각</div>
+      <div class="kpi-value" style="font-size:.85rem" id="kpi-time">—</div>
+      <div class="kpi-sub">마지막 스크리닝</div>
+    </div>
+  </div>
+
+  <!-- 섹터 요약 -->
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-header">
+      <div class="panel-title"><span class="icon">▦</span> 섹터 히트맵</div>
+      <div class="panel-meta" id="sector-meta">클릭하면 해당 섹터 필터</div>
+    </div>
+    <div class="sector-grid" id="sector-grid">
+      <div class="loading"><div class="spinner"></div> 로딩 중...</div>
+    </div>
+  </div>
+
+  <!-- 바스켓 + 조건검색 2열 -->
+  <div class="grid-2">
+
+    <!-- 바스켓 종목 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">🧺</span> 바스켓 TOP</div>
+        <div class="panel-meta" id="basket-meta">—</div>
+      </div>
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="setBasketFilter('all', this)">전체</button>
+        <button class="tab-btn" onclick="setBasketFilter('ma5', this)">5일선↑</button>
+        <button class="tab-btn" onclick="setBasketFilter('high', this)">고점수(60+)</button>
+      </div>
+      <div class="stock-list" id="basket-list">
+        <div class="loading"><div class="spinner"></div> 로딩 중...</div>
+      </div>
+    </div>
+
+    <!-- 조건검색 결과 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">📡</span> 조건검색 결과</div>
+        <div class="panel-meta" id="cond-meta">—</div>
+      </div>
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="setCondFilter('all', this)">전체</button>
+        <button class="tab-btn" onclick="setCondFilter('ma20', this)">MA20↑</button>
+        <button class="tab-btn" onclick="setCondFilter('high', this)">고점수(60+)</button>
+      </div>
+      <div class="stock-list" id="cond-list">
+        <div class="loading"><div class="spinner"></div> 로딩 중...</div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ── 설정 ──────────────────────────────────────────
+const API = 'https://kgu3405.tplinkdns.com/api/kstockfinder';
+
+// ── 전역 상태 ──────────────────────────────────────
+let basketData    = [];
+let condData      = [];
+let sectorFilter  = null;
+let basketFilter  = 'all';
+let condFilter    = 'all';
+
+// ── 유틸 ──────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 70) return 'var(--green)';
+  if (s >= 50) return 'var(--yellow)';
+  return 'var(--red)';
+}
+function grade(s) {
+  if (s >= 70) return ['A', 'grade-A'];
+  if (s >= 50) return ['B', 'grade-B'];
+  return ['C', 'grade-C'];
+}
+function rsiColor(r) {
+  if (r > 70) return 'ind-red';
+  if (r < 40) return 'ind-yellow';
+  return 'ind-green';
+}
+function volColor(v) {
+  if (v >= 2) return 'ind-green';
+  if (v >= 1) return 'ind-yellow';
+  return 'ind-muted';
+}
+
+// ── 종목 카드 렌더 ──────────────────────────────────
+function renderStockItem(r, idx) {
+  const score    = +(r.final_score ?? r.score ?? 0);
+  const rsi      = +(r.rsi ?? 0);
+  const vol      = +(r.vol_ratio ?? 0);
+  const atr      = +(r.atr_pct ?? 0);
+  const [g, gc]  = grade(score);
+  const barW     = Math.min(100, score);
+  const barColor = scoreColor(score);
+
+  const aiOpinion = (r.ai_opinion && r.ai_opinion !== '-')
+    ? `<div class="ai-opinion">🤖 ${r.ai_opinion}</div>` : '';
+
+  const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : '';
+
+  return `
+  <div class="stock-item" onclick="openDetail('${r.code}')">
+    <div class="stock-rank ${rankClass}">${idx + 1}</div>
+    <div class="stock-name-wrap">
+      <div class="stock-name">${r.name ?? '-'}</div>
+      <div class="stock-code">${r.code ?? ''}</div>
+      ${r.sector ? `<span class="stock-sector">${r.sector}</span>` : ''}
+    </div>
+    <div class="score-bar-wrap">
+      <div class="score-val">${score.toFixed(1)}</div>
+      <div class="score-bar">
+        <div class="score-fill" style="width:${barW}%;background:${barColor}"></div>
+      </div>
+    </div>
+    <div class="indicator ${rsiColor(rsi)}" data-tip="RSI">
+      ${rsi.toFixed(1)}
+    </div>
+    <div class="indicator ${volColor(vol)}" data-tip="거래량비율">
+      ${vol > 0 ? vol.toFixed(1)+'x' : '-'}
+    </div>
+    <div class="indicator ind-muted" data-tip="ATR%">
+      ${atr.toFixed(1)}%
+    </div>
+    <div class="grade-badge ${gc}">${g}</div>
+  </div>
+  ${aiOpinion}`;
+}
+
+// ── 바스켓 렌더 ────────────────────────────────────
+function renderBasket() {
+  let data = [...basketData];
+
+  if (sectorFilter) data = data.filter(r => r.sector === sectorFilter);
+  if (basketFilter === 'ma5')  data = data.filter(r => +r.above_ma5 === 1);
+  if (basketFilter === 'high') data = data.filter(r => +(r.final_score ?? r.score ?? 0) >= 60);
+
+  data.sort((a,b) => +(b.final_score ?? b.score ?? 0) - +(a.final_score ?? a.score ?? 0));
+  const top = data.slice(0, 15);
+
+  document.getElementById('basket-list').innerHTML =
+    top.length ? top.map((r, i) => renderStockItem(r, i)).join('') :
+    '<div class="empty-state">해당 조건 종목 없음</div>';
+}
+
+// ── 조건검색 렌더 ──────────────────────────────────
+function renderCond() {
+  let data = [...condData];
+
+  if (sectorFilter)  data = data.filter(r => r.sector === sectorFilter);
+  if (condFilter === 'ma20') data = data.filter(r => +r.above_ma20 === 1);
+  if (condFilter === 'high') data = data.filter(r => +(r.final_score ?? r.score ?? 0) >= 60);
+
+  data.sort((a,b) => +(b.final_score ?? b.score ?? 0) - +(a.final_score ?? a.score ?? 0));
+  const top = data.slice(0, 15);
+
+  document.getElementById('cond-list').innerHTML =
+    top.length ? top.map((r, i) => renderStockItem(r, i)).join('') :
+    '<div class="empty-state">조건검색 결과 없음<br><small style="color:var(--text-dim)">장 시간 이후 갱신됩니다</small></div>';
+}
+
+// ── 섹터 히트맵 렌더 ──────────────────────────────
+function renderSectors(sectors) {
+  if (!sectors || !sectors.length) {
+    document.getElementById('sector-grid').innerHTML =
+      '<div class="empty-state">섹터 데이터 없음</div>';
+    return;
+  }
+
+  document.getElementById('sector-grid').innerHTML = sectors.map(s => `
+    <div class="sector-card ${sectorFilter === s.sector ? 'active' : ''}"
+         onclick="toggleSectorFilter('${s.sector}', this)">
+      <div class="sector-name">${s.sector}</div>
+      <div class="sector-stats">
+        <span>${s.count}종목</span>
+        <span>5일선↑ ${s.ma5_up}개</span>
+        <span>RSI ${s.avg_rsi ?? '-'}</span>
+      </div>
+      <div class="sector-score">${s.avg_score}</div>
+    </div>
+  `).join('');
+}
+
+// ── 섹터 필터 토글 ────────────────────────────────
+function toggleSectorFilter(sector, el) {
+  sectorFilter = (sectorFilter === sector) ? null : sector;
+  document.querySelectorAll('.sector-card').forEach(c => c.classList.remove('active'));
+  if (sectorFilter) el.classList.add('active');
+  document.getElementById('sector-meta').textContent =
+    sectorFilter ? `[${sectorFilter}] 필터 적용 중 — 클릭해서 해제` : '클릭하면 해당 섹터 필터';
+  renderBasket();
+  renderCond();
+}
+
+// ── 탭 필터 ───────────────────────────────────────
+function setBasketFilter(f, btn) {
+  basketFilter = f;
+  document.querySelectorAll('#basket-list').forEach(() => {});
+  btn.closest('.tab-row').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBasket();
+}
+function setCondFilter(f, btn) {
+  condFilter = f;
+  btn.closest('.tab-row').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCond();
+}
+
+// ── 종목 상세 (새 탭) ─────────────────────────────
+function openDetail(code) {
+  window.open(`https://finance.naver.com/item/main.naver?code=${code}`, '_blank');
+}
+
+// ── KPI 업데이트 ──────────────────────────────────
+function updateKPI(dashboard) {
+  const b = dashboard.basket;
+  const c = dashboard.condition;
+  const sectors = dashboard.sector_summary ?? [];
+
+  const ma5Up = basketData.filter(r => +r.above_ma5 === 1).length;
+  const topSec = sectors[0]?.sector ?? '—';
+
+  document.getElementById('kpi-basket').textContent = b.total ?? '—';
+  document.getElementById('kpi-ma5').textContent    = ma5Up;
+  document.getElementById('kpi-cond').textContent   = c.total ?? '0';
+  document.getElementById('kpi-sector').textContent = topSec;
+
+  const t = b.updated_at ?? c.updated_at;
+  if (t) {
+    document.getElementById('kpi-time').textContent = t.slice(11, 16);
+    document.getElementById('last-update').textContent = `갱신: ${t}`;
+  }
+
+  document.getElementById('basket-meta').textContent =
+    `총 ${b.total}종목 · ${b.updated_at?.slice(0,16) ?? '—'}`;
+  document.getElementById('cond-meta').textContent =
+    `총 ${c.total}종목 · ${c.updated_at?.slice(0,16) ?? '—'}`;
+}
+
+// ── 전체 데이터 로드 ──────────────────────────────
+async function loadAll() {
+  document.getElementById('basket-list').innerHTML =
+    '<div class="loading"><div class="spinner"></div> 로딩 중...</div>';
+  document.getElementById('cond-list').innerHTML =
+    '<div class="loading"><div class="spinner"></div> 로딩 중...</div>';
+  document.getElementById('sector-grid').innerHTML =
+    '<div class="loading"><div class="spinner"></div> 로딩 중...</div>';
+
+  try {
+    const [dashRes, basketRes, condRes] = await Promise.all([
+      fetch(`${API}/dashboard`),
+      fetch(`${API}/basket?limit=35`),
+      fetch(`${API}/condition?limit=30`),
+    ]);
+
+    const dash   = await dashRes.json();
+    const basket = await basketRes.json();
+    const cond   = await condRes.json();
+
+    basketData = basket.data ?? [];
+    condData   = cond.data   ?? [];
+
+    updateKPI(dash);
+    renderSectors(dash.sector_summary ?? []);
+    renderBasket();
+    renderCond();
+
+  } catch(e) {
+    console.error(e);
+    const errMsg = `<div class="empty-state">API 연결 실패<br><small style="color:var(--text-dim)">${e.message}</small></div>`;
+    document.getElementById('basket-list').innerHTML = errMsg;
+    document.getElementById('cond-list').innerHTML   = errMsg;
+    document.getElementById('sector-grid').innerHTML = errMsg;
+    document.getElementById('last-update').textContent = '연결 실패';
+  }
+}
+
+// ── 초기 로드 + 5분마다 자동 갱신 ────────────────
+loadAll();
+setInterval(loadAll, 5 * 60 * 1000);
+</script>
+</body>
+</html>
