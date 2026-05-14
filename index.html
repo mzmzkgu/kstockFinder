@@ -282,24 +282,6 @@ main {
 }
 .hold-icon { font-size: 1rem; }
 
-/* 네이버 버튼 */
-.naver-btn {
-  display: block;
-  margin: 0 20px 20px;
-  background: #03c75a;
-  color: #fff;
-  text-align: center;
-  padding: 13px;
-  border-radius: 12px;
-  font-size: .88rem;
-  font-weight: 700;
-  text-decoration: none;
-  letter-spacing: .02em;
-  transition: all .2s;
-  box-shadow: 0 4px 12px rgba(3,199,90,.3);
-}
-.naver-btn:hover { background: #02b050; transform: translateY(-1px); }
-.naver-btn:active { transform: translateY(0); }
 
 /* ── 차트 영역 ── */
 .chart-card {
@@ -537,8 +519,8 @@ function renderCard(p, idx) {
   `).join('');
 
   return `
-  <div class="pick-card rank-${p.rank}">
-    <div class="card-top" onclick="window.open('${p.naver_url}','_blank')">
+  <div class="pick-card rank-${p.rank}" onclick="window.open('${p.naver_url}','_blank')" style="cursor:pointer">
+    <div class="card-top">
       <div class="rank-circle">${RANK_EMOJI[idx]}</div>
       <div class="card-title-wrap">
         <div class="card-name">${p.name}</div>
@@ -571,9 +553,6 @@ function renderCard(p, idx) {
       </span>
     </div>
 
-    <a href="${p.naver_url}" target="_blank" class="naver-btn">
-      📊 네이버 주식에서 자세히 보기
-    </a>
   </div>`;
 }
 
