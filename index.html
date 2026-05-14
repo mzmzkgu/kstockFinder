@@ -385,6 +385,131 @@ canvas { width:100% !important; }
 }
 .error-icon { font-size: 3rem; margin-bottom: 12px; }
 .error-msg { font-size: .85rem; line-height: 1.8; }
+
+/* ── 탭 네비게이션 ── */
+.tab-nav {
+  display: flex;
+  background: #fff;
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 14px 8px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.tab-btn.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+  font-weight: 700;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── 히스토리 카드 ── */
+.history-date-group { margin-bottom: 20px; }
+.history-date-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+.history-date-label::before {
+  content: '';
+  width: 3px; height: 14px;
+  background: var(--gold);
+  border-radius: 2px;
+}
+.history-date-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.history-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.history-item:hover { border-color: var(--gold); background: #fffdf8; }
+
+.history-rank {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.history-info { flex: 1; min-width: 0; }
+.history-name {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-sector {
+  font-size: .68rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.history-return {
+  text-align: right;
+  flex-shrink: 0;
+}
+.return-val {
+  font-size: 1rem;
+  font-weight: 900;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.return-pos { color: var(--red); }   /* 한국은 상승=빨강 */
+.return-neg { color: #3c7be8; }      /* 하락=파랑 */
+.return-zero { color: var(--muted); }
+.return-label {
+  font-size: .62rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.history-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: .82rem;
+}
+.history-empty {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--muted);
+}
+.history-empty .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+.history-empty p { font-size: .82rem; line-height: 1.8; }
 </style>
 </head>
 <body>
@@ -401,12 +526,21 @@ canvas { width:100% !important; }
   </div>
 </header>
 
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('today', this)">
+    ✨ 오늘의 추천
+  </button>
+  <button class="tab-btn" onclick="switchTab('history', this)">
+    📅 최근 추천 기록
+  </button>
+</nav>
 <div class="notice-bar">
   <span class="notice-icon">💡</span>
   <span>매일 장 마감 후 자동으로 업데이트됩니다. 투자 전 시장 분위기를 꼭 확인하세요.</span>
 </div>
 
-<main id="main-content">
+<div id="tab-today" class="tab-content active"><main id="main-content">
   <div class="loading-wrap">
     <div class="loading-spinner"></div>
     <div class="loading-text">
@@ -414,7 +548,13 @@ canvas { width:100% !important; }
       잠깐만 기다려 주세요 😊
     </div>
   </div>
-</main>
+</main></div>
+
+<div id="tab-history" class="tab-content">
+  <div style="max-width:560px;margin:0 auto;padding:20px 16px" id="history-content">
+    <div class="history-loading">불러오는 중...</div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -623,6 +763,94 @@ function renderAll(data) {
   setTimeout(() => drawChart(picks), 100);
 }
 
+
+// ── 탭 전환 ───────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+
+  if (tab === 'history') loadHistory();
+}
+
+// ── 히스토리 렌더 ──────────────────────────────────
+let historyLoaded = false;
+
+function returnClass(rate) {
+  if (rate === null || rate === undefined) return 'return-zero';
+  if (rate > 0) return 'return-pos';
+  if (rate < 0) return 'return-neg';
+  return 'return-zero';
+}
+function returnText(rate) {
+  if (rate === null || rate === undefined) return '-';
+  return (rate > 0 ? '+' : '') + rate.toFixed(2) + '%';
+}
+
+function renderHistory(data) {
+  const list = data.history || [];
+  const el = document.getElementById('history-content');
+
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="history-empty">
+        <div class="empty-icon">📭</div>
+        <p>아직 추천 기록이 없어요.<br>내일부터 매일 저녁 자동으로 기록됩니다.</p>
+      </div>`;
+    return;
+  }
+
+  const EMOJI = ['🥇','🥈','🥉'];
+  let html = '';
+
+  list.forEach(group => {
+    const picks = group.picks || [];
+    html += `<div class="history-date-group">`;
+    html += `<div class="history-date-label">${group.date_label} 추천</div>`;
+
+    picks.forEach((p, i) => {
+      const rateClass = returnClass(p.return_rate);
+      const rateText  = returnText(p.return_rate);
+      const priceText = (p.buy_price && p.cur_price)
+        ? `${p.buy_price.toLocaleString()}→${p.cur_price.toLocaleString()}원`
+        : '시세 조회 중';
+
+      html += `
+      <div class="history-item" onclick="window.open('${p.naver_url}','_blank')">
+        <div class="history-rank">${EMOJI[i] || (i+1)+'.'}</div>
+        <div class="history-info">
+          <div class="history-name">${p.name}</div>
+          <div class="history-sector">${p.sector || ''} · ${priceText}</div>
+        </div>
+        <div class="history-return">
+          <div class="return-val ${rateClass}">${rateText}</div>
+          <div class="return-label">추천일 이후</div>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+async function loadHistory() {
+  if (historyLoaded) return;
+  document.getElementById('history-content').innerHTML =
+    '<div class="history-loading"><div class="loading-spinner" style="margin:0 auto 12px"></div>기록을 불러오는 중...</div>';
+
+  try {
+    const res  = await fetch(`${API}/history`);
+    const data = await res.json();
+    renderHistory(data);
+    historyLoaded = true;
+  } catch(e) {
+    document.getElementById('history-content').innerHTML =
+      '<div class="history-empty"><div class="empty-icon">😥</div><p>기록을 불러오지 못했어요.<br>잠시 후 다시 시도해 주세요.</p></div>';
+  }
+}
 // ── 데이터 로드 ────────────────────────────────────
 async function load() {
   document.getElementById('main-content').innerHTML = `
