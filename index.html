@@ -698,6 +698,7 @@ function renderCard(p, idx) {
 
 // ── 전체 렌더 ──────────────────────────────────────
 function renderAll(data) {
+  console.log('renderAll 호출됨, picks:', data && data.picks ? data.picks.length : 0);
   const picks = data.picks || [];
   const updatedAt = data.updated_at || '';
 
@@ -862,16 +863,18 @@ async function load() {
   try {
     const res  = await fetch(`${API}/top3`);
     const data = await res.json();
+    console.log('API 응답:', JSON.stringify(data).slice(0, 200));
+    console.log('picks 수:', data.picks ? data.picks.length : 'picks 없음');
     renderAll(data);
   } catch(e) {
+    console.error('load() 에러:', e.name, e.message, e.stack);
     document.getElementById('main-content').innerHTML = `
       <div class="error-wrap">
         <div class="error-icon">😥</div>
         <div class="error-msg">
-          데이터를 불러오지 못했어요.<br>
-          인터넷 연결을 확인하고 다시 시도해 주세요.<br><br>
+          데이터를 불러오지 못했어요.<br><br>
           <small style="color:#bbb;font-size:.7rem;word-break:break-all">
-            오류: ${e.message}<br>
+            오류: ${e.name}: ${e.message}<br>
             API: ${API}/top3
           </small>
         </div>
