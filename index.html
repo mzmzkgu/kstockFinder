@@ -540,6 +540,26 @@ canvas { width:100% !important; }
   <span>매일 장 마감 후 자동으로 업데이트됩니다. 투자 전 시장 분위기를 꼭 확인하세요.</span>
 </div>
 
+<!-- 디버그 버튼 (확인 후 제거) -->
+<div id="debug-area" style="background:#1a1a1a;color:#0f0;font-family:monospace;font-size:.7rem;padding:10px;display:none;word-break:break-all;max-height:200px;overflow-y:auto"></div>
+<button onclick="runDebug()" style="width:100%;padding:8px;background:#333;color:#fff;border:none;font-size:.8rem;cursor:pointer">🔍 디버그 실행</button>
+
+<script>
+async function runDebug() {
+  const el = document.getElementById('debug-area');
+  el.style.display = 'block';
+  el.textContent = '요청 중...';
+  try {
+    const res = await fetch('https://kgu3405.tplinkdns.com/api/kstockfinder/top3');
+    el.textContent = 'HTTP상태: ' + res.status + ' / Content-Type: ' + res.headers.get('content-type');
+    const text = await res.text();
+    el.textContent += '\n응답: ' + text.slice(0, 300);
+  } catch(e) {
+    el.textContent = '에러: ' + e.name + ': ' + e.message;
+  }
+}
+</script>
+
 <div id="tab-today" class="tab-content active"><main id="main-content">
   <div class="loading-wrap">
     <div class="loading-spinner"></div>
