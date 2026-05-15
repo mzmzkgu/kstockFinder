@@ -869,7 +869,11 @@ async function load() {
         <div class="error-icon">😥</div>
         <div class="error-msg">
           데이터를 불러오지 못했어요.<br>
-          인터넷 연결을 확인하고 다시 시도해 주세요.
+          인터넷 연결을 확인하고 다시 시도해 주세요.<br><br>
+          <small style="color:#bbb;font-size:.7rem;word-break:break-all">
+            오류: ${e.message}<br>
+            API: ${API}/top3
+          </small>
         </div>
       </div>
       <button class="refresh-btn" onclick="load()">↻ 다시 시도</button>`;
